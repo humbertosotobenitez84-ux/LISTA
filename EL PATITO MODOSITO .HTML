@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>El Patito Modosito — Lista de precios y Chat</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif; }
+    body { margin: 0; background: #fffbea; color: #111; padding-bottom: 100px; /* Espacio para botones flotantes */ }
+    
+    /* --- Header Styles --- */
+    header { padding: 24px 16px; background: linear-gradient(90deg, #000, #d32f2f); color: #fff; text-align: center; }
+    header h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: .3px; text-shadow: 1px 1px 3px #000; }
+    header p { margin: 0; opacity: .9; }
+
+    /* --- Button Styles --- */
+    .btn-chat { background: linear-gradient(45deg, #25d366, #128c7e); color: #fff; padding: 12px 20px; border-radius: 50px; border: none; font-size: 16px; cursor: pointer; text-decoration: none; display: inline-block; transition: all .3s ease; box-shadow: 0 4px 12px rgba(0,0,0,.2); text-align: center;}
+    .btn-chat:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 6px 16px rgba(0,0,0,.3); }
+    .btn-chat-email { background: linear-gradient(45deg, #d32f2f, #ffeb3b); }
+    
+    .btn-chat-floating { position: fixed; bottom: 20px; right: 20px; z-index: 900; display: flex; flex-direction: column; gap: 10px; align-items: flex-end; }
+
+    /* --- Main Content Styles --- */
+    .wrap { max-width: 1000px; margin: 24px auto; padding: 0 16px 32px; }
+    .card { background: #fff; border-radius: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.15); padding: 16px; border-top: 6px solid #fdd835; transition: all .3s ease; }
+    .card:hover { transform: translateY(-5px); box-shadow: 0 10px 24px rgba(0,0,0,.25); }
+    
+    /* --- Toolbar & Table --- */
+    .toolbar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 16px; }
+    input[type="search"] { flex: 1; min-width: 220px; padding: 10px 12px; border-radius: 12px; border: 1px solid #d32f2f; font-size: 14px; transition: all .2s; }
+    input[type="search"]:focus { border-color: #fdd835; outline: none; box-shadow: 0 0 6px #fdd835; }
+    
+    .btn { background: linear-gradient(45deg, #d32f2f, #ffeb3b); color: #fff; padding: 8px 14px; border-radius: 8px; border: none; font-size: 14px; cursor: pointer; transition: all .3s ease; }
+    .btn:hover { background: linear-gradient(45deg, #000, #d32f2f); transform: scale(1.05); }
+    
+    table { width: 100%; border-collapse: collapse; transition: all .3s ease; }
+    th, td { text-align: left; padding: 12px; font-size: 14px; }
+    thead th { position: sticky; top: 0; background: #fdd835; border-bottom: 2px solid #d32f2f; cursor: pointer; user-select: none; color: #000; transition: all .2s; }
+    thead th:hover { background: #d32f2f; color: #fff; }
+    tbody tr { border-bottom: 1px dashed #eee; transition: all .2s; }
+    tbody tr:hover { background: #fff3cd; transform: scale(1.01); }
+    .price { font-variant-numeric: tabular-nums; font-weight: 600; color: #d32f2f; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; border: 1px solid #d32f2f; background: #fff3cd; color: #000; }
+    
+    footer { margin-top: 16px; font-size: 13px; color: #333; text-align: center; padding: 20px 10px; background: #fdd835; border-top: 3px solid #d32f2f; }
+
+    /* --- ESTILOS DEL CHATBOT --- */
+    .bot-launcher {
+      background: linear-gradient(135deg, #000, #444);
+      color: #fdd835;
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 30px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+      cursor: pointer;
+      transition: transform 0.3s;
+      border: 2px solid #fdd835;
+    }
+    .bot-launcher:hover { transform: scale(1.1) rotate(10deg); }
+
+    .chat-window {
+      position: fixed; bottom: 100px; right: 20px;
+      width: 350px; height: 450px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+      z-index: 1000;
+      opacity: 0; pointer-events: none; transform: translateY(20px);
+      transition: all 0.3s ease;
+      border: 1px solid #ddd;
+    }
+    .chat-window.active { opacity: 1; pointer-events: all; transform: translateY(0); }
+
+    .chat-header {
+      background: linear-gradient(90deg, #d32f2f, #000);
+      color: #fff; padding: 15px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .chat-header h3 { margin: 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+    .chat-close { background: none; border: none; color: #fff; font-size: 20px; cursor: pointer; }
+
+    .chat-body {
+      flex: 1; padding: 15px; overflow-y: auto;
+      background: #f9f9f9;
+      display: flex; flex-direction: column; gap: 10px;
+    }
+
+    .message { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; }
+    .msg-bot { background: #e0e0e0; align-self: flex-start; border-bottom-left-radius: 2px; color: #000; }
+    .msg-user { background: #d32f2f; color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
+
+    .chat-footer {
+      padding: 10px; border-top: 1px solid #eee;
+      display: flex; gap: 8px; background: #fff;
+    }
+    .chat-input {
+      flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 20px; outline: none;
+    }
+    .chat-input:focus { border-color: #d32f2f; }
+    .chat-send {
+      background: #d32f2f; color: #fff; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .chat-send:hover { background: #b71c1c; }
+
+    /* Mobile adjustments */
+    @media (max-width: 480px) {
+      .chat-window { width: 90%; right: 5%; bottom: 90px; height: 60vh; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>Lista de precios — El Patito Modosito</h1>
+    <p>Precios vigentes de tazas y accesorios.</p>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <div class="toolbar">
+        <input id="q" type="search" placeholder="Filtrar por producto, modalidad o condición…" />
+        <button class="btn" onclick="printTable()">🖨️ Imprimir</button>
+        <button class="btn" onclick="exportCSV()">⬇️ Exportar CSV</button>
+        <span class="badge" title="Registros totales"><strong id="count">0</strong> ítems</span>
+      </div>
+
+      <table id="tabla">
+        <thead>
+          <tr>
+            <th data-key="producto">Producto</th>
+            <th data-key="modalidad">Modalidad</th>
+            <th data-key="precio">Precio (MXN)</th>
+            <th data-key="condicion">Condición</th>
+            <th data-key="nota">Nota</th>
+          </tr>
+        </thead>
+        <tbody>
+        </tbody>
+      </table>
+
+      <footer>
+        Última actualización manual: <span id="today"></span>
+      </footer>
+    </section>
+  </main>
+
+  <div class="btn-chat-floating">
+    <button class="bot-launcher" onclick="toggleChat()" title="Asistente Virtual">🤖</button>
+    
+    <a href="https://wa.me/525549308653?text=Hola%20quiero%20informes%20sobre%20las%20tazas" target="_blank" class="btn-chat" style="width: 50px; height: 50px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%;">💬</a>
+    <a href="https://mail.google.com/mail/?view=cm&fs=1&to=humbertosotobenitez84@gmail.com&su=Consulta%20sobre%20tazas" target="_blank" class="btn-chat btn-chat-email" style="width: 50px; height: 50px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; margin-left: 0;">📧</a>
+  </div>
+
+  <div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+      <h3>🤖 Asistente Patito</h3>
+      <button class="chat-close" onclick="toggleChat()">×</button>
+    </div>
+    <div class="chat-body" id="chatBody">
+      <div class="message msg-bot">
+        ¡Hola! 👋 Soy el asistente virtual de El Patito Modosito. ¿En qué puedo ayudarte hoy? Pregúntame por precios o productos (ej. "precio de taza mágica").
+      </div>
+    </div>
+    <div class="chat-footer">
+      <input type="text" id="chatInput" class="chat-input" placeholder="Escribe aquí..." onkeypress="handleKeyPress(event)">
+      <button class="chat-send" onclick="sendMessage()">➤</button>
+    </div>
+  </div>
+
+  <footer>
+    © 2025 El Patito Modosito — Humberto Soto Benítez | WhatsApp: 5549308653 | Correo: humbertosotobenitez84@gmail.com<br>
+    Todos los derechos reservados.
+  </footer>
+
+  <script>
+    // --- DATOS ORIGINALES ---
+    const DATA = [
+      { producto: "Taza mágica", modalidad: "Unidad", precio: 110, condicion: "—", nota: "Precio por pieza" },
+      { producto: "Taza mágica", modalidad: "Mayoreo", precio: 95, condicion: "A partir de 12 piezas", nota: "" },
+      { producto: "Taza sola (blanca)", modalidad: "Unidad", precio: 65, condicion: "—", nota: "Sin personalizar" },
+      { producto: "Caja", modalidad: "Unidad", precio: 30, condicion: "—", nota: "" },
+      { producto: "Caja personalizada", modalidad: "Mayoreo", precio: 45, condicion: "—", nota: "Precio de mayoreo, mínimo no especificado" },
+      { producto: "Taza personalizada", modalidad: "Unidad", precio: 110, condicion: "—", nota: "Incluye personalización" },
+      { producto: "Taza mágica", modalidad: "Mayoreo", precio: 90, condicion: "—", nota: "Otra opción de mayoreo" },
+      { producto: "Taza blanca", modalidad: "Mayoreo", precio: 45, condicion: "A partir de 36 piezas", nota: "" },
+      { producto: "Taza mágica", modalidad: "Mayoreo (2ª opción)", precio: 100, condicion: "—", nota: "Segunda opción de mayoreo" },
+      { producto: "Taza blanca", modalidad: "Mayoreo", precio: 45, condicion: "A partir de 50 a partir de 12 piezas", nota: "" },
+    ];
+
+    // --- LOGICA ORIGINAL DE LA TABLA ---
+    const tbody = document.querySelector('#tabla tbody');
+    const countEl = document.getElementById('count');
+    const q = document.getElementById('q');
+    const todayEl = document.getElementById('today');
+
+    function render(rows) {
+      tbody.innerHTML = rows.map(r => `
+        <tr>
+          <td>${r.producto}</td>
+          <td>${r.modalidad}</td>
+          <td class="price">$ ${Number(r.precio).toFixed(2)}</td>
+          <td>${r.condicion}</td>
+          <td>${r.nota || ''}</td>
+        </tr>
+      `).join('');
+      countEl.textContent = rows.length;
+    }
+
+    function normalize(s) { return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+
+    q.addEventListener('input', () => {
+      const term = normalize(q.value);
+      const filtered = DATA.filter(r => {
+        const blob = `${r.producto} ${r.modalidad} ${r.precio} ${r.condicion} ${r.nota}`;
+        return normalize(blob).includes(term);
+      });
+      render(filtered);
+    });
+
+    let sortState = { key: null, dir: 1 };
+    document.querySelectorAll('th[data-key]').forEach(th => {
+      th.addEventListener('click', () => {
+        const key = th.getAttribute('data-key');
+        sortState.dir = sortState.key === key ? -sortState.dir : 1;
+        sortState.key = key;
+        const rows = [...DATA].sort((a,b) => {
+          const A = (a[key] ?? '').toString();
+          const B = (b[key] ?? '').toString();
+          if (key === 'precio') return (parseFloat(a[key]) - parseFloat(b[key])) * sortState.dir;
+          return A.localeCompare(B, 'es', { numeric: true }) * sortState.dir;
+        });
+        render(rows);
+      });
+    });
+
+    function printTable() { window.print(); }
+
+    function exportCSV() {
+      const header = ["Producto","Modalidad","Precio","Condición","Nota"];
+      const rows = DATA.map(r => [r.producto, r.modalidad, r.precio, r.condicion, r.nota]);
+      const csvContent = [header, ...rows].map(e => e.map(x => '"'+(x||'')+'"').join(",")).join("\n");
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", "lista_precios.csv");
+      link.click();
+    }
+
+    render(DATA);
+    todayEl.textContent = new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    // --- LÓGICA DEL CHATBOT ---
+    function toggleChat() {
+      document.getElementById('chatWindow').classList.toggle('active');
+      // Foco al input si se abre
+      if(document.getElementById('chatWindow').classList.contains('active')){
+        setTimeout(() => document.getElementById('chatInput').focus(), 300);
+      }
+    }
+
+    function handleKeyPress(e) {
+      if (e.key === 'Enter') sendMessage();
+    }
+
+    function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      // 1. Mostrar mensaje del usuario
+      addMessage(text, 'user');
+      input.value = '';
+
+      // 2. Simular "pensando..."
+      setTimeout(() => {
+        const response = getBotResponse(text);
+        addMessage(response, 'bot');
+      }, 600);
+    }
+
+    function addMessage(text, type) {
+      const chatBody = document.getElementById('chatBody');
+      const div = document.createElement('div');
+      div.className = `message msg-${type}`;
+      div.innerHTML = text; // Usamos innerHTML para permitir enlaces si es necesario
+      chatBody.appendChild(div);
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    function getBotResponse(input) {
+      const lowerInput = normalize(input);
+
+      // Saludos
+      if (lowerInput.match(/hola|buenos dias|buenas tardes/)) {
+        return "¡Hola! ¿Buscas algún precio en especial?";
+      }
+      
+      if (lowerInput.match(/gracias|adios|bye/)) {
+        return "¡De nada! Quedo a tus órdenes. 😊";
+      }
+      
+      if (lowerInput.match(/ubicacion|donde|local/)) {
+        return "Estamos en la CDMX. Para detalles exactos de entrega, contáctanos por WhatsApp.";
+      }
+      
+      if (lowerInput.match(/telefono|whats|correo/)) {
+        return "Puedes contactar a Humberto al <strong>5549308653</strong> o al correo <strong>humbertosotobenitez84@gmail.com</strong>.";
+      }
+
+      // Búsqueda inteligente de precios en DATA
+      // Buscamos si el usuario escribió algo que coincida con nuestros productos
+      const matches = DATA.filter(item => {
+        const prod = normalize(item.producto);
+        // Si el input contiene palabras clave del producto
+        return lowerInput.includes(prod) || (prod.includes("taza") && lowerInput.includes("taza"));
+      });
+
+      if (lowerInput.includes("precio") || lowerInput.includes("cuanto") || lowerInput.includes("costo") || matches.length > 0) {
+        // Si encontramos coincidencias específicas
+        let specificMatches = matches;
+        
+        // Filtrar por mayoreo si el usuario lo pide
+        if (lowerInput.includes("mayoreo")) {
+          specificMatches = matches.filter(m => normalize(m.modalidad).includes("mayoreo"));
+        } else if (lowerInput.includes("unidad") || lowerInput.includes("una")) {
+          specificMatches = matches.filter(m => normalize(m.modalidad).includes("unidad"));
+        }
+
+        if (specificMatches.length > 0) {
+          let resp = "Aquí tienes lo que encontré:<br>";
+          specificMatches.forEach(m => {
+            resp += `• <strong>${m.producto}</strong> (${m.modalidad}): $${m.precio}. <small>${m.condicion !== '—' ? m.condicion : ''}</small><br>`;
+          });
+          return resp;
+        }
+      }
+
+      // Default
+      return "No estoy seguro de esa información específica. Pero puedes buscar en la tabla de arriba o escribirme por <a href='https://wa.me/525549308653' target='_blank' style='color:#d32f2f'>WhatsApp aquí</a>.";
+    }
+  </script>
+</body>
+</html>
